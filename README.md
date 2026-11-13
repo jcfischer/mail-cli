@@ -119,11 +119,11 @@ message in Drafts rather than relying on the server to search custom headers.
 that overlap (for example, a retry sent while the first is still saving) can
 both save a draft, because the check and the save are separate IMAP commands.
 
-### Test mailbox
+### Test mail server
 
 `scripts/test-mailbox` runs a disposable GreenMail IMAP/SMTP server in a
 container (Docker or Rancher Desktop) with one invented account, for testing
-the CLI without touching a real mailbox. Mail lives in memory and is gone after
+the CLI without touching a real account. Mail lives in memory and is gone after
 `down`.
 
 ```bash
