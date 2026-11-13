@@ -584,27 +584,29 @@ export class ImapClient {
 
   /**
    * Find a message whose header `name` equals `value` exactly.
-   * IMAP SEARCH HEADER matches substrings, so each hit is checked against the
-   * fetched header before it counts.
+   * Reads the named headers of every message in the mailbox instead of using
+   * IMAP SEARCH HEADER, because some servers do not index custom headers and
+   * would answer an empty search for a message that is there.
    *
-   * @returns The message's headers (lower-cased names), or null if none matches
+   * @param extra - Further headers to return with the match
+   * @returns The fetched headers (lower-cased names), or null if none matches
    */
   async findMessageByHeader(
     mailbox: string,
     name: string,
-    value: string
+    value: string,
+    extra: string[] = []
   ): Promise<{ uid: number; headers: Record<string, string> } | null> {
-    await this.client.mailboxOpen(mailbox);
-    const uids = await this.client.search({ header: { [name]: value } }, { uid: true });
-    if (!uids || uids.length === 0) return null;
+    const box = await this.client.mailboxOpen(mailbox);
+    if (box.exists === 0) return null;
 
-    for await (const msg of this.client.fetch(uids, { uid: true, headers: true }, { uid: true })) {
+    const wanted = name.toLowerCase();
+    let match: { uid: number; headers: Record<string, string> } | null = null;
+    for await (const msg of this.client.fetch('1:*', { uid: true, headers: [name, ...extra] })) {
       const headers = parseHeaderBlock(msg.headers?.toString('utf-8') ?? '');
-      if (headers[name.toLowerCase()] === value) {
-        return { uid: msg.uid, headers };
-      }
+      if (!match && headers[wanted] === value) match = { uid: msg.uid, headers };
     }
-    return null;
+    return match;
   }
 
   /**

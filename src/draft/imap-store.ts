@@ -16,7 +16,10 @@ export class ImapDraftsStore implements DraftsStore {
 
   async findByRequestId(requestId: string): Promise<StoredDraft | null> {
     return this.withDrafts(async (client, drafts) => {
-      const hit = await client.findMessageByHeader(drafts, REQUEST_ID_HEADER, requestId);
+      const hit = await client.findMessageByHeader(drafts, REQUEST_ID_HEADER, requestId, [
+        'Message-ID',
+        REQUEST_DIGEST_HEADER,
+      ]);
       if (!hit) return null;
       return {
         messageId: hit.headers['message-id'] ?? '',

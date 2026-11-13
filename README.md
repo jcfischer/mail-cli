@@ -112,7 +112,8 @@ email send -t user1@example.com,user2@example.com --cc boss@example.com -s "Upda
 ```
 
 The request ID is stored on the draft as the `X-Mail-Request-Id` header, with a
-content digest in `X-Mail-Request-Digest`. Lookup uses IMAP `SEARCH HEADER`.
+content digest in `X-Mail-Request-Digest`. Lookup reads that header from every
+message in Drafts rather than relying on the server to search custom headers.
 
 ### Syncing Emails
 
