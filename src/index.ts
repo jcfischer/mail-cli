@@ -117,7 +117,7 @@ program
         if (bcc) console.log(`   BCC: ${bcc.join(', ')}`);
         console.log(`   Subject: ${options.subject}`);
         console.log(`   Markdown: ${options.markdown ? 'yes' : 'no'}`);
-        if (attachments) console.log(`   Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+        if (attachments) console.log(`   Attachments: ${attachments.map((a: { filename: string }) => a.filename).join(', ')}`);
         console.log('');
       }
 

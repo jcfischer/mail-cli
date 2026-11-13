@@ -181,12 +181,10 @@ export class ImapClient {
     const messages: EmailMessage[] = [];
 
     // Get all messages matching criteria
-    let messageList;
-    if (Object.keys(searchCriteria).length > 0) {
-      messageList = await this.client.search(searchCriteria);
-    } else {
-      messageList = await this.client.search({ all: true });
-    }
+    const found = Object.keys(searchCriteria).length > 0
+      ? await this.client.search(searchCriteria)
+      : await this.client.search({ all: true });
+    const messageList: number[] = found || [];
 
     // Limit results (only if limit is provided and > 0)
     // For batch operations, we want ALL matching messages, not just recent ones
@@ -205,8 +203,9 @@ export class ImapClient {
         uid: true,
         source: true, // Get full message source for proper MIME parsing
       })) {
-        // Parse envelope
+        // Parse envelope (requested above, so a server that omits it is skipped)
         const envelope = msg.envelope;
+        if (!envelope) continue;
         const from = envelope.from?.[0]
           ? `${envelope.from[0].name || ''} <${envelope.from[0].address}>`.trim()
           : '';
@@ -452,6 +451,7 @@ export class ImapClient {
       source: true, // Get full message source
     }, UID_OPTIONS)) {
       const envelope = msg.envelope;
+      if (!envelope) continue;
       const from = envelope.from?.[0]
         ? `${envelope.from[0].name || ''} <${envelope.from[0].address}>`.trim()
         : '';
@@ -570,16 +570,18 @@ export class ImapClient {
    * @param mailbox - Target mailbox path (e.g., 'Drafts')
    * @param message - Raw RFC 2822 message as Buffer
    * @param flags - IMAP flags to set (e.g., ['\\Draft', '\\Seen'])
-   * @returns UID of the appended message as MessageUID
+   * @returns UID of the appended message, or undefined when the server
+   *          does not report one (no UIDPLUS)
    */
   async appendMessage(
     mailbox: string,
     message: Buffer,
     flags: string[] = ['\\Draft', '\\Seen']
-  ): Promise<MessageUID> {
+  ): Promise<MessageUID | undefined> {
     const result = await this.client.append(mailbox, message, flags);
-    // ImapFlow append returns { destination, uid, uidValidity }
-    return MessageUID(result.uid);
+    // ImapFlow append returns { destination, uid, uidValidity }, or false on failure
+    if (!result) throw new Error(`APPEND to ${mailbox} failed`);
+    return result.uid ? MessageUID(result.uid) : undefined;
   }
 
   /**

@@ -172,10 +172,10 @@ export class EmailIndexer {
       receivedDate: null,
       priority,
       flags: JSON.stringify(flags),
-      isRead: isRead ? 1 : 0,
-      isStarred: isStarred ? 1 : 0,
-      isArchived: isArchived ? 1 : 0,
-      hasAttachments: message.hasAttachments ? 1 : 0,
+      isRead,
+      isStarred,
+      isArchived,
+      hasAttachments: Boolean(message.hasAttachments),
       attachmentCount: message.hasAttachments ? 1 : 0,
       indexedAt: Date.now(),
       lastSyncedAt: Date.now(),
@@ -239,9 +239,10 @@ export class EmailIndexer {
     // Note: drizzle's inArray isn't working well, use raw query via db
     let deleted = 0;
     for (const messageId of messageIds) {
-      const result = await this.db.delete(emails)
-        .where(eq(emails.messageId, messageId));
-      deleted += result.changes || 0;
+      const removed = await this.db.delete(emails)
+        .where(eq(emails.messageId, messageId))
+        .returning({ messageId: emails.messageId });
+      deleted += removed.length;
     }
     return deleted;
   }

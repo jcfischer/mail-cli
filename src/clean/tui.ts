@@ -3,6 +3,7 @@
  * Interactive email processing with readline
  */
 
+import type { MessageUID } from '../imap/types';
 import * as readline from 'readline';
 import type { CleanInboxSession, CleanInboxEmail, SessionAction } from '../types';
 import { currentEmail, nextEmail, recordAction, getSessionSummary } from './session';
@@ -33,7 +34,7 @@ export interface TuiHandlers {
     email: CleanInboxEmail,
     replyIntent: string,
     account: string
-  ) => Promise<{ uid: number; messageId: string }>;
+  ) => Promise<{ uid?: MessageUID; messageId: string }>;
 
   /** Create a todo in Tana using supertag CLI */
   createTanaTodo: (
@@ -402,7 +403,7 @@ export function createDefaultHandlers(accountName: string): TuiHandlers {
       }
 
       return {
-        uid: result.uid || 0,
+        uid: result.uid,
         messageId: result.messageId,
       };
     },
