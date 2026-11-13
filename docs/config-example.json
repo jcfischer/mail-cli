@@ -1,0 +1,75 @@
+{
+  "defaultAccount": "personal",
+  "accounts": {
+    "personal": {
+      "name": "Personal Account",
+      "from": {
+        "name": "Jane Doe",
+        "email": "jane@example.com"
+      },
+      "smtp": {
+        "host": "smtp.example.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "jane@example.com",
+          "pass": "your-password-here"
+        }
+      },
+      "imap": {
+        "enabled": true,
+        "host": "imap.example.com",
+        "port": 993,
+        "tls": true,
+        "auth": {
+          "user": "jane@example.com",
+          "pass": "your-password-here"
+        },
+        "mailboxes": ["INBOX", "Archive", "Sent"]
+      }
+    },
+    "work": {
+      "name": "Work Account",
+      "from": {
+        "name": "Jane Doe",
+        "email": "jane@work.example.com"
+      },
+      "smtp": {
+        "host": "smtp.work.example.com",
+        "port": 465,
+        "secure": true,
+        "auth": {
+          "user": "jane@work.example.com",
+          "pass": "your-work-password-here"
+        }
+      },
+      "imap": {
+        "enabled": true,
+        "host": "imap.work.example.com",
+        "port": 993,
+        "tls": true,
+        "auth": {
+          "user": "jane@work.example.com",
+          "pass": "your-work-password-here"
+        },
+        "mailboxes": ["INBOX", "[Gmail]/All Mail", "[Gmail]/Sent Mail"]
+      }
+    },
+    "noreply": {
+      "name": "No-Reply Account",
+      "from": {
+        "name": "Mail System",
+        "email": "noreply@system.example.com"
+      },
+      "smtp": {
+        "host": "smtp.system.example.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "noreply@system.example.com",
+          "pass": "your-noreply-password-here"
+        }
+      }
+    }
+  }
+}

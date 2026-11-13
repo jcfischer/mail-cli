@@ -1,0 +1,229 @@
+# mail-cli
+
+Send emails via SMTP with multiple account support and automatic markdown rendering.
+
+## Quick Start
+
+```bash
+# Build
+cd mail-cli
+bun install
+bun run build
+
+# Configure
+mkdir -p ~/.config/email
+cp docs/config-example.json ~/.config/email/config.json
+# Edit config.json with your SMTP credentials
+
+# Test
+email verify
+email accounts
+
+# Send
+email send -t user@example.com -s "Hello" -b "Test email"
+```
+
+## Features
+
+### Email Sending
+- ✅ Multiple SMTP accounts
+- ✅ Markdown → HTML rendering
+- ✅ File attachments
+- ✅ CC and BCC support
+- ✅ Stdin/file input
+- ✅ Connection verification
+
+### Email Reading & Management
+- ✅ Multi-account IMAP sync (INBOX, Archive, Sent)
+- ✅ Incremental sync with UID tracking
+- ✅ Verbose progress indicator (--verbose flag)
+- ✅ Smart filtering with priority detection
+- ✅ Batch operations (archive, delete, label)
+- ✅ Email digest generation
+
+### Database & Analytics
+- ✅ SQLite email indexing with multi-mailbox support
+- ✅ Email statistics and trends (day/week/month)
+- ✅ Sender analysis (excludes user's own emails)
+- ✅ Priority distribution tracking
+- ✅ Volume trend visualization
+- ✅ Per-account, per-mailbox sync state
+
+### Semantic Search (AI-powered)
+- ✅ Vector embeddings via resona library
+- ✅ Natural language search queries
+- ✅ Per-account embedding databases
+- ✅ Multi-account search with --all flag
+
+### Technology
+- ✅ TypeScript/Bun CLI
+- ✅ Bun's native SQLite
+- ✅ Drizzle ORM
+
+## Usage
+
+### Sending Emails
+
+```bash
+# Plain text
+email send -t user@example.com -s "Subject" -b "Body text"
+
+# Markdown
+email send -t user@example.com -s "Report" -b "# Title\n\n**Bold** text"
+
+# With attachment
+email send -t user@example.com -s "Report" -b "See attached" --attachment report.pdf
+
+# Multiple attachments
+email send -t user@example.com -s "Files" -b "Documents attached" --attachment doc1.pdf --attachment doc2.xlsx
+
+# From file
+email send -t user@example.com -s "Report" -f report.md
+
+# From stdin
+echo "Content" | email send -t user@example.com -s "Subject"
+
+# Specific account
+email send -t user@example.com -s "Subject" -b "Body" -a work
+
+# Multiple recipients
+email send -t user1@example.com,user2@example.com --cc boss@example.com -s "Update" -b "Content"
+```
+
+### Syncing Emails
+
+```bash
+# Sync all accounts (incremental)
+email sync
+
+# Sync specific account
+email sync -a personal
+
+# Sync with verbose progress indicator
+email sync -a personal --verbose
+
+# Force full resync (ignores last sync state)
+email sync -a personal --full
+
+# Sync specific mailboxes only
+email sync -a personal -m INBOX Archive Sent
+
+# Check sync status
+email sync-status
+
+# Reset sync state (forces full resync next time)
+email sync-reset -a personal
+```
+
+### Reading & Managing Emails
+
+```bash
+# List recent emails
+email list -a personal --limit 20
+
+# List unread emails only
+email list -a personal --unseen
+
+# Get specific email
+email get --uid 12345 -a personal
+
+# Analyze email priorities
+email filter -a personal
+
+# Archive read emails older than 7 days
+email batch-archive -a personal --older-than 7 --read-only --apply
+
+# Delete promotional emails (dry-run first)
+email batch-delete -a personal --keywords sale discount --dry-run
+
+# Move newsletters to folder
+email batch-label --to Newsletters --has-unsubscribe --apply
+```
+
+### Email Analytics
+
+```bash
+# Index emails to database
+email index -a personal --since 30
+
+# View email statistics
+email stats -a personal --period week
+
+# Detailed stats with sender analysis
+email stats -a personal --senders --volume --priority
+```
+
+### Semantic Search (AI-powered)
+
+```bash
+# Configure embedding provider (show current settings)
+email embed config
+
+# Generate embeddings for indexed emails
+email embed generate -a personal
+email embed generate --all              # All accounts
+
+# Semantic search with natural language
+email embed search "project updates" -a personal
+email embed search "budget planning" --all   # Search all accounts
+
+# View embedding statistics
+email embed stats -a personal
+email embed stats --all                 # All accounts
+```
+
+### List Mailboxes
+
+```bash
+# List all available mailboxes/folders
+email mailboxes -a personal
+
+# JSON output
+email mailboxes -a work --output json
+```
+
+
+## Configuration
+
+Create `~/.config/email/config.json`:
+
+```json
+{
+  "defaultAccount": "personal",
+  "accounts": {
+    "personal": {
+      "name": "Personal",
+      "from": {
+        "name": "Your Name",
+        "email": "you@example.com"
+      },
+      "smtp": {
+        "host": "smtp.example.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "you@example.com",
+          "pass": "your-password"
+        }
+      }
+    }
+  }
+}
+```
+
+See [SKILL.md](./SKILL.md) for complete documentation.
+
+## Documentation
+
+- [SKILL.md](./SKILL.md) - Complete documentation
+- [docs/config-example.json](./docs/config-example.json) - Configuration template
+
+## Requirements
+
+- Bun runtime
+- SMTP server credentials
+- macOS, Linux, or Windows
+
+## License
+
+MIT

@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build output
+email
+
+# Configuration (contains passwords)
+config.json
+
+# OS files
+.DS_Store
+test/db/*.lance/

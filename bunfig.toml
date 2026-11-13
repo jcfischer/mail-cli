@@ -1,0 +1,4 @@
+# Bun configuration for Email Skill
+
+[test]
+# No special configuration needed - LanceDB works out of the box

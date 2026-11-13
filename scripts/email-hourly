@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# Email Hourly - Automated sync and embed for all accounts
+#
+# This script:
+# 1. Syncs emails from IMAP for all accounts
+# 2. Generates embeddings for new emails (limit 100 per account)
+#
+# Runs hourly via LaunchAgent.
+# Logs are written to ~/.pai/logs/ for consistency with other PAI services.
+#
+# Usage:
+#   email-hourly                  Run sync + embed for all accounts
+#   email-hourly --sync           Run sync only
+#   email-hourly --embed          Run embed only
+#   email-hourly -a personal      Run for specific account only
+#   email-hourly --verbose        Verbose output
+#   email-hourly --help           Show help
+
+set -e
+
+# Resolve symlinks to get the actual script directory
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+EMAIL_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Paths
+LOG_DIR="${HOME}/.pai/logs"
+EMAIL_CLI="${EMAIL_DIR}/email"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Parse arguments
+SYNC_ONLY=false
+EMBED_ONLY=false
+VERBOSE=false
+ACCOUNT=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --sync)
+      SYNC_ONLY=true
+      shift
+      ;;
+    --embed)
+      EMBED_ONLY=true
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=true
+      shift
+      ;;
+    --account|-a)
+      ACCOUNT="$2"
+      shift 2
+      ;;
+    --help|-h)
+      echo "Email Hourly - Automated sync and embed"
+      echo ""
+      echo "Usage:"
+      echo "  email-hourly                  Run sync + embed for all accounts"
+      echo "  email-hourly --sync           Run sync only"
+      echo "  email-hourly --embed          Run embed only"
+      echo "  email-hourly -a, --account    Run for specific account only"
+      echo "  email-hourly --verbose        Verbose output"
+      echo "  email-hourly --help           Show help"
+      echo ""
+      echo "Accounts: personal, work"
+      echo "Logs: $LOG_DIR/email-hourly.log"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Use --help for usage information"
+      exit 1
+      ;;
+  esac
+done
+
+# Timestamp for logging
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+LOG_FILE="${LOG_DIR}/email-hourly.log"
+
+log() {
+  echo "[$TIMESTAMP] $1" | tee -a "$LOG_FILE"
+}
+
+log_verbose() {
+  if [ "$VERBOSE" = true ]; then
+    echo "[$TIMESTAMP] $1" | tee -a "$LOG_FILE"
+  else
+    echo "[$TIMESTAMP] $1" >> "$LOG_FILE"
+  fi
+}
+
+# Run sync for an account
+# Args: account_name [mailbox1 mailbox2 ...]
+run_sync() {
+  local account="$1"
+  shift
+  local mailboxes=("$@")
+
+  log_verbose "Syncing $account..."
+
+  if [ ${#mailboxes[@]} -gt 0 ]; then
+    if [ "$VERBOSE" = true ]; then
+      "$EMAIL_CLI" sync -a "$account" -m "${mailboxes[@]}" 2>&1 | tee -a "$LOG_FILE"
+      return ${PIPESTATUS[0]}
+    else
+      "$EMAIL_CLI" sync -a "$account" -m "${mailboxes[@]}" >> "$LOG_FILE" 2>&1
+      return $?
+    fi
+  else
+    if [ "$VERBOSE" = true ]; then
+      "$EMAIL_CLI" sync -a "$account" 2>&1 | tee -a "$LOG_FILE"
+      return ${PIPESTATUS[0]}
+    else
+      "$EMAIL_CLI" sync -a "$account" >> "$LOG_FILE" 2>&1
+      return $?
+    fi
+  fi
+}
+
+# Run embed for an account
+run_embed() {
+  local account="$1"
+
+  log_verbose "Embedding $account (limit 100)..."
+
+  if [ "$VERBOSE" = true ]; then
+    "$EMAIL_CLI" embed generate -a "$account" --limit 100 2>&1 | tee -a "$LOG_FILE"
+    return ${PIPESTATUS[0]}
+  else
+    "$EMAIL_CLI" embed generate -a "$account" --limit 100 >> "$LOG_FILE" 2>&1
+    return $?
+  fi
+}
+
+# Main execution
+log "=== Email Hourly Started ==="
+
+# Determine which accounts to process
+if [ -n "$ACCOUNT" ]; then
+  ACCOUNTS=("$ACCOUNT")
+else
+  ACCOUNTS=("personal" "work")
+fi
+
+EXIT_CODE=0
+
+for acct in "${ACCOUNTS[@]}"; do
+  log "--- Account: $acct ---"
+
+  # Sync (unless embed-only)
+  if [ "$EMBED_ONLY" = false ]; then
+    # Work account has custom folders (Exchange uses "Sent Items" not "Sent")
+    if [ "$acct" = "work" ]; then
+      if run_sync "$acct" "INBOX" "Archive" "Sent Items"; then
+        log "Sync $acct: OK"
+      else
+        log "Sync $acct: FAILED"
+        EXIT_CODE=1
+      fi
+    else
+      # Use default mailboxes from config
+      if run_sync "$acct"; then
+        log "Sync $acct: OK"
+      else
+        log "Sync $acct: FAILED"
+        EXIT_CODE=1
+      fi
+    fi
+  fi
+
+  # Embed (unless sync-only)
+  if [ "$SYNC_ONLY" = false ]; then
+    if run_embed "$acct"; then
+      log "Embed $acct: OK"
+    else
+      log "Embed $acct: FAILED (non-fatal)"
+      # Don't fail the whole job for embed failures
+    fi
+  fi
+done
+
+log "=== Email Hourly Finished (exit code: $EXIT_CODE) ==="
+exit $EXIT_CODE
