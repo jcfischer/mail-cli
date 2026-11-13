@@ -4,7 +4,7 @@
 
 import type { CreateDraftOptions, EmailAccount } from '../types';
 import { ImapClient, createImapConfig } from '../imap/client';
-import { buildMessage } from './service';
+import { createDraft } from './service';
 import { REQUEST_DIGEST_HEADER, REQUEST_ID_HEADER, type DraftsStore, type StoredDraft } from './request';
 
 export class ImapDraftsStore implements DraftsStore {
@@ -26,11 +26,9 @@ export class ImapDraftsStore implements DraftsStore {
   }
 
   async save(options: CreateDraftOptions, headers: Record<string, string>): Promise<{ messageId: string }> {
-    return this.withDrafts(async (client, drafts) => {
-      const { message, messageId } = await buildMessage(options, this.emailAccount, headers);
-      await client.appendMessage(drafts, message, ['\\Draft', '\\Seen']);
-      return { messageId };
-    });
+    const result = await createDraft(options, this.emailAccount, headers);
+    if (!result.success) throw new Error(result.error ?? 'draft was not saved');
+    return { messageId: result.messageId };
   }
 
   private async withDrafts<T>(work: (client: ImapClient, drafts: string) => Promise<T>): Promise<T> {

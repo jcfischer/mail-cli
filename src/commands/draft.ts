@@ -160,10 +160,11 @@ export function createDraftCommand(): Command {
         const invalid = validateRequestId(requestId);
         if (invalid) throw new Error(invalid);
         const config = loadConfig();
-        const names = options.account
-          ? [options.account]
-          : Object.keys(config.accounts).filter((name) => config.accounts[name]?.imap?.enabled);
-        const stores = names.map((name) => storeFor(config, name));
+        const stores = options.account
+          ? [new ImapDraftsStore(getAccount(config, options.account))]
+          : Object.keys(config.accounts)
+              .filter((name) => config.accounts[name]?.imap?.enabled)
+              .map((name) => storeFor(config, name));
         const result = await lookupDraft(stores, requestId);
         logger.info('Draft lookup answered', { requestId, ...result });
         if (options.output === 'json') {

@@ -8,6 +8,7 @@
  */
 
 import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
 import type { CreateDraftOptions } from '../types';
 
 export const REQUEST_ID_HEADER = 'X-Mail-Request-Id';
@@ -22,6 +23,15 @@ export function validateRequestId(requestId: string): string | undefined {
   return undefined;
 }
 
+const DIGEST_VERSION = 'v1';
+
+const sha256 = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
+
+/**
+ * A versioned digest of everything that shapes the saved draft, so a repeat
+ * with any other content answers `conflict`. Changing the fields needs a new
+ * DIGEST_VERSION.
+ */
 export function draftDigest(options: CreateDraftOptions): string {
   const content = {
     to: options.to,
@@ -29,9 +39,17 @@ export function draftDigest(options: CreateDraftOptions): string {
     bcc: options.bcc ?? [],
     subject: options.subject,
     body: options.body,
+    html: options.html ?? null,
+    markdown: options.markdown ?? null,
     inReplyTo: options.inReplyTo ?? null,
+    references: options.references ?? [],
+    attachments: (options.attachments ?? []).map((a) => ({
+      filename: a.filename,
+      contentType: a.contentType ?? null,
+      sha256: sha256(a.content ?? (a.path ? readFileSync(a.path) : '')),
+    })),
   };
-  return createHash('sha256').update(JSON.stringify(content)).digest('hex');
+  return `${DIGEST_VERSION}:sha256:${sha256(JSON.stringify(content))}`;
 }
 
 export interface StoredDraft {
@@ -96,14 +114,12 @@ export async function lookupDraft(
   const invalid = validateRequestId(requestId);
   if (invalid) throw new Error(invalid);
 
-  let unreachable = false;
-  for (const store of stores) {
-    try {
-      const found = await store.findByRequestId(requestId);
-      if (found) return { status: 'found', id: found.messageId, account: store.account };
-    } catch {
-      unreachable = true;
+  const answers = await Promise.allSettled(stores.map((store) => store.findByRequestId(requestId)));
+  for (const [i, answer] of answers.entries()) {
+    if (answer.status === 'fulfilled' && answer.value) {
+      return { status: 'found', id: answer.value.messageId, account: stores[i].account };
     }
   }
+  const unreachable = answers.some((answer) => answer.status === 'rejected');
   return unreachable || stores.length === 0 ? { status: 'unavailable' } : { status: 'not_found' };
 }

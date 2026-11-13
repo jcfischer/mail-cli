@@ -62,6 +62,23 @@ describe('saveDraftOnce', () => {
     expect(store.drafts).toHaveLength(1);
   });
 
+  it('treats other attachments or markdown mode as other content', async () => {
+    const store = new MemoryDrafts();
+    const withFile = draft({ attachments: [{ filename: 'a.txt', content: 'one' }] });
+    await saveDraftOnce(store, 'req-1', withFile);
+    expect((await saveDraftOnce(store, 'req-1', withFile)).status).toBe('exists');
+    const otherFile = draft({ attachments: [{ filename: 'a.txt', content: 'two' }] });
+    expect((await saveDraftOnce(store, 'req-1', otherFile)).status).toBe('conflict');
+    expect((await saveDraftOnce(store, 'req-1', draft({ markdown: false }))).status).toBe('conflict');
+    expect(store.drafts).toHaveLength(1);
+  });
+
+  it('stamps a versioned digest', async () => {
+    const store = new MemoryDrafts();
+    await saveDraftOnce(store, 'req-1', draft());
+    expect(store.drafts[0].headers[REQUEST_DIGEST_HEADER]).toMatch(/^v1:sha256:[0-9a-f]{64}$/);
+  });
+
   it('rejects a request ID that could inject a header', async () => {
     const store = new MemoryDrafts();
     await expect(saveDraftOnce(store, 'req-1\r\nBcc: x@example.invalid', draft())).rejects.toThrow();
