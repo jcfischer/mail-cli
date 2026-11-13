@@ -4,6 +4,7 @@ bun.lockb
 
 # Build output
 email
+email-mcp
 
 # Configuration (contains passwords)
 config.json

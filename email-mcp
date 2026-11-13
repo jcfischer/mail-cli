@@ -1,5 +1,0 @@
-#!/usr/bin/env bun
-/**
- * Email MCP Server - Model Context Protocol server for Email
- */
-await import("./src/mcp/index.ts");
