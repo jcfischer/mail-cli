@@ -106,7 +106,8 @@ email send -t user1@example.com,user2@example.com --cc boss@example.com -s "Upda
 # Find a draft by request ID (every IMAP account, or one with -a)
 ./email draft lookup req-42 -o json
 # {"status":"found","id":"<message-id>","account":"work"}
-# {"status":"not_found"}   the draft is not in Drafts (sent or removed)
+# {"status":"not_found"}   no draft in Drafts carries this request ID (it was sent,
+#                          removed, or re-saved by a client that dropped the header)
 # {"status":"unavailable"} an account could not be reached
 ```
 
