@@ -62,8 +62,8 @@ export function createSkipAction(email: CleanInboxEmail): SessionAction {
  * Options for creating a reply action
  */
 export interface ReplyActionOptions {
-  /** UID of the created draft */
-  draftUid: MessageUID;
+  /** UID of the created draft, when the server reported one */
+  draftUid?: MessageUID;
   /** Message-ID of the created draft */
   draftMessageId?: string;
   /** User's reply intent (what they want to say) */

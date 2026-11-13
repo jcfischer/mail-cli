@@ -74,6 +74,27 @@ describe('ImapClient.appendMessage()', () => {
     const signature = client.appendMessage.length;
     expect(signature).toBeGreaterThanOrEqual(2); // At least mailbox and message
   });
+
+  const withAppend = (answer: unknown) => {
+    const client = new ImapClient(mockConfig);
+    (client as any).client.append = async () => answer;
+    return client;
+  };
+
+  it('returns the UID the server reports', async () => {
+    const client = withAppend({ destination: 'Drafts', uid: 7 });
+    expect(await client.appendMessage('Drafts', Buffer.from('x'))).toBe(MessageUID(7));
+  });
+
+  it('succeeds without a UID when the server has no UIDPLUS', async () => {
+    const client = withAppend({ destination: 'Drafts' });
+    expect(await client.appendMessage('Drafts', Buffer.from('x'))).toBeUndefined();
+  });
+
+  it('fails when the server rejects the APPEND', async () => {
+    const client = withAppend(false);
+    await expect(client.appendMessage('Drafts', Buffer.from('x'))).rejects.toThrow('APPEND to Drafts failed');
+  });
 });
 
 describe('ImapClient.findDraftsMailbox()', () => {
