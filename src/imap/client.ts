@@ -583,6 +583,33 @@ export class ImapClient {
   }
 
   /**
+   * Find a message whose header `name` equals `value` exactly.
+   * Reads the named headers of every message in the mailbox instead of using
+   * IMAP SEARCH HEADER, because some servers do not index custom headers and
+   * would answer an empty search for a message that is there.
+   *
+   * @param extra - Further headers to return with the match
+   * @returns The fetched headers (lower-cased names), or null if none matches
+   */
+  async findMessageByHeader(
+    mailbox: string,
+    name: string,
+    value: string,
+    extra: string[] = []
+  ): Promise<{ uid: number; headers: Record<string, string> } | null> {
+    const box = await this.client.mailboxOpen(mailbox);
+    if (box.exists === 0) return null;
+
+    const wanted = name.toLowerCase();
+    let match: { uid: number; headers: Record<string, string> } | null = null;
+    for await (const msg of this.client.fetch('1:*', { uid: true, headers: [name, ...extra] })) {
+      const headers = parseHeaderBlock(msg.headers?.toString('utf-8') ?? '');
+      if (!match && headers[wanted] === value) match = { uid: msg.uid, headers };
+    }
+    return match;
+  }
+
+  /**
    * Find the Drafts mailbox by special-use attribute or common names
    * IMAP servers use \Drafts special-use flag (RFC 6154)
    *
@@ -710,4 +737,20 @@ export async function fetchEmailMessages(
     await client.disconnect();
     throw error;
   }
+}
+
+/**
+ * Parse a raw RFC 5322 header block into lower-cased name -> value.
+ * Folded lines are unfolded; the first occurrence of a header wins.
+ */
+export function parseHeaderBlock(raw: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const unfolded = raw.replace(/\r?\n[ \t]+/g, ' ');
+  for (const line of unfolded.split(/\r?\n/)) {
+    const colon = line.indexOf(':');
+    if (colon <= 0) continue;
+    const name = line.slice(0, colon).trim().toLowerCase();
+    if (!(name in headers)) headers[name] = line.slice(colon + 1).trim();
+  }
+  return headers;
 }

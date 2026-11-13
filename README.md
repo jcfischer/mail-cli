@@ -90,6 +90,35 @@ email send -t user@example.com -s "Subject" -b "Body" -a work
 email send -t user1@example.com,user2@example.com --cc boss@example.com -s "Update" -b "Content"
 ```
 
+### Drafts
+
+```bash
+# Save a draft to the account's Drafts mailbox (never sent)
+./email draft create -t "user@example.com" -s "Subject" -b "Body"
+
+# Save at most one draft per request ID, for callers that may retry
+./email draft create -t "user@example.com" -s "Subject" -b "Body" \
+  -a work --request-id req-42 -o json
+# {"status":"created","id":"<message-id>","account":"work"}
+# A repeat with the same content answers "exists"; other content answers
+# "conflict". Neither saves a second draft.
+
+# Find a draft by request ID (every IMAP account, or one with -a)
+./email draft lookup req-42 -o json
+# {"status":"found","id":"<message-id>","account":"work"}
+# {"status":"not_found"}   no draft in Drafts carries this request ID (it was sent,
+#                          removed, or re-saved by a client that dropped the header)
+# {"status":"unavailable"} an account could not be reached
+```
+
+The request ID is stored on the draft as the `X-Mail-Request-Id` header, with a
+content digest in `X-Mail-Request-Digest`. Lookup reads that header from every
+message in Drafts rather than relying on the server to search custom headers.
+
+"At most one" holds for sequential calls. Two creates with the same request ID
+that overlap (for example, a retry sent while the first is still saving) can
+both save a draft, because the check and the save are separate IMAP commands.
+
 ### Syncing Emails
 
 ```bash

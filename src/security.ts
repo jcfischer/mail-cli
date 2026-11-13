@@ -190,22 +190,22 @@ export function displaySecurityRecommendations(warnings: string[]): void {
     return;
   }
 
-  console.log('\n⚠️  Security warnings:\n');
+  console.error('\n⚠️  Security warnings:\n');
 
   for (const warning of warnings) {
-    console.log(`   ${warning}`);
+    console.error(`   ${warning}`);
   }
 
-  console.log('\n📖 Security best practices:');
-  console.log('   1. Store passwords in macOS keychain instead of config file:');
-  console.log('      security add-generic-password -s "email-personal-smtp" -a "$USER" -w "your-password"');
-  console.log('      Then use: "pass": "keychain:email-personal-smtp"');
-  console.log('');
-  console.log('   2. Use environment variables:');
-  console.log('      export EMAIL_PERSONAL_PASSWORD="your-password"');
-  console.log('      Then use: "pass": "env:EMAIL_PERSONAL_PASSWORD"');
-  console.log('');
-  console.log('   3. Ensure config file has secure permissions:');
-  console.log('      chmod 600 ~/.config/email/config.json');
-  console.log('');
+  console.error('\n📖 Security best practices:');
+  console.error('   1. Store passwords in macOS keychain instead of config file:');
+  console.error('      security add-generic-password -s "email-personal-smtp" -a "$USER" -w "your-password"');
+  console.error('      Then use: "pass": "keychain:email-personal-smtp"');
+  console.error('');
+  console.error('   2. Use environment variables:');
+  console.error('      export EMAIL_PERSONAL_PASSWORD="your-password"');
+  console.error('      Then use: "pass": "env:EMAIL_PERSONAL_PASSWORD"');
+  console.error('');
+  console.error('   3. Ensure config file has secure permissions:');
+  console.error('      chmod 600 ~/.config/email/config.json');
+  console.error('');
 }
