@@ -119,6 +119,28 @@ message in Drafts rather than relying on the server to search custom headers.
 that overlap (for example, a retry sent while the first is still saving) can
 both save a draft, because the check and the save are separate IMAP commands.
 
+### Test mail server
+
+`scripts/test-mailbox` runs a disposable GreenMail IMAP/SMTP server in a
+container (Docker or Rancher Desktop) with one invented account, for testing
+the CLI without touching a real account. Mail lives in memory and is gone after
+`down`.
+
+```bash
+scripts/test-mailbox up          # start it, create Drafts, write a sandbox config
+H="$(scripts/test-mailbox home)" # the sandbox home with that config
+
+HOME="$H" ./email draft create -t to@example.invalid -s Test -b Body \
+  --request-id req-1 -o json
+HOME="$H" ./email draft lookup req-1 -o json
+HOME="$H" ./email list -a test -m Drafts   # look into Drafts
+
+scripts/test-mailbox down
+```
+
+Any IMAP client can also open it: `127.0.0.1:3143`, no TLS, user `test`,
+password `secret`.
+
 ### Syncing Emails
 
 ```bash
