@@ -48,6 +48,12 @@ export function draftDigest(options: CreateDraftOptions): string {
       contentType: a.contentType ?? null,
       sha256: sha256(a.content ?? (a.path ? readFileSync(a.path) : '')),
     })),
+    inlineImages: (options.cidAttachments ?? []).map((a) => ({
+      cid: a.cid,
+      filename: a.filename,
+      contentType: a.contentType,
+      sha256: sha256(a.content),
+    })),
   };
   return `${DIGEST_VERSION}:sha256:${sha256(JSON.stringify(content))}`;
 }

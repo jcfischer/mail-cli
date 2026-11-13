@@ -10,7 +10,7 @@ import { readFileSync } from 'fs';
 import { loadConfig, getAccount } from '../config';
 import { createDraft } from '../draft/service';
 import { ImapDraftsStore } from '../draft/imap-store';
-import { lookupDraft, saveDraftOnce, validateRequestId, type DraftsStore } from '../draft/request';
+import { lookupDraft, saveDraftOnce, type DraftsStore } from '../draft/request';
 import type { CreateDraftOptions, EmailAttachment } from '../types';
 
 import { createLogger } from '../logger';
@@ -93,8 +93,6 @@ export function createDraftCommand(): Command {
         };
 
         if (options.requestId !== undefined) {
-          const invalid = validateRequestId(options.requestId);
-          if (invalid) throw new Error(invalid);
           logger.info('Saving draft by request ID', { account: account.name, requestId: options.requestId });
           const outcome = await saveDraftOnce(new ImapDraftsStore(account), options.requestId, draftOptions);
           logger.info('Draft request answered', outcome);
@@ -157,8 +155,6 @@ export function createDraftCommand(): Command {
     .option('-o, --output <format>', 'Output format: text (default) or json', 'text')
     .action(async (requestId: string, options) => {
       try {
-        const invalid = validateRequestId(requestId);
-        if (invalid) throw new Error(invalid);
         const config = loadConfig();
         const stores = options.account
           ? [new ImapDraftsStore(getAccount(config, options.account))]

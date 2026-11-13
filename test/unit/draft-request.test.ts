@@ -70,6 +70,9 @@ describe('saveDraftOnce', () => {
     const otherFile = draft({ attachments: [{ filename: 'a.txt', content: 'two' }] });
     expect((await saveDraftOnce(store, 'req-1', otherFile)).status).toBe('conflict');
     expect((await saveDraftOnce(store, 'req-1', draft({ markdown: false }))).status).toBe('conflict');
+    const image = (bytes: string) =>
+      draft({ cidAttachments: [{ cid: 'logo', filename: 'logo.png', contentType: 'image/png', content: Buffer.from(bytes) }] });
+    expect((await saveDraftOnce(store, 'req-1', image('a'))).status).toBe('conflict');
     expect(store.drafts).toHaveLength(1);
   });
 
