@@ -13,6 +13,14 @@ const TEST_DB_PATH = join(import.meta.dir, "test-embeddings.db");
 const TEST_LANCE_PATH = join(import.meta.dir, "test-embeddings.lance");
 const TEST_DIR = import.meta.dir;
 
+// These tests embed through a local Ollama server with the bge-m3 model.
+// Where none is reachable (CI), they are skipped and reported as skipped.
+const OLLAMA_ENDPOINT = "http://localhost:11434";
+const ollamaUp = await fetch(`${OLLAMA_ENDPOINT}/api/tags`, { signal: AbortSignal.timeout(1000) })
+  .then((r) => r.ok)
+  .catch(() => false);
+if (!ollamaUp) console.warn(`Skipping embedding tests: no Ollama at ${OLLAMA_ENDPOINT}`);
+
 function cleanupTestDb() {
   // Clean up LanceDB directory (resona converts .db to .lance)
   if (existsSync(TEST_LANCE_PATH)) {
@@ -20,7 +28,7 @@ function cleanupTestDb() {
   }
 }
 
-describe("EmailEmbeddingService - Resona Model Upgrade (TDD)", () => {
+describe.skipIf(!ollamaUp)("EmailEmbeddingService - Resona Model Upgrade (TDD)", () => {
   let service: EmailEmbeddingService;
 
   beforeAll(() => {
@@ -139,7 +147,7 @@ describe("EmailEmbeddingService - Resona Model Upgrade (TDD)", () => {
   });
 });
 
-describe("EmailEmbeddingService", () => {
+describe.skipIf(!ollamaUp)("EmailEmbeddingService", () => {
   let service: EmailEmbeddingService;
 
   beforeAll(() => {
