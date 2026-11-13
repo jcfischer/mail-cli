@@ -583,6 +583,31 @@ export class ImapClient {
   }
 
   /**
+   * Find a message whose header `name` equals `value` exactly.
+   * IMAP SEARCH HEADER matches substrings, so each hit is checked against the
+   * fetched header before it counts.
+   *
+   * @returns The message's headers (lower-cased names), or null if none matches
+   */
+  async findMessageByHeader(
+    mailbox: string,
+    name: string,
+    value: string
+  ): Promise<{ uid: number; headers: Record<string, string> } | null> {
+    await this.client.mailboxOpen(mailbox);
+    const uids = await this.client.search({ header: { [name]: value } }, { uid: true });
+    if (!uids || uids.length === 0) return null;
+
+    for await (const msg of this.client.fetch(uids, { uid: true, headers: true }, { uid: true })) {
+      const headers = parseHeaderBlock(msg.headers?.toString('utf-8') ?? '');
+      if (headers[name.toLowerCase()] === value) {
+        return { uid: msg.uid, headers };
+      }
+    }
+    return null;
+  }
+
+  /**
    * Find the Drafts mailbox by special-use attribute or common names
    * IMAP servers use \Drafts special-use flag (RFC 6154)
    *
@@ -710,4 +735,20 @@ export async function fetchEmailMessages(
     await client.disconnect();
     throw error;
   }
+}
+
+/**
+ * Parse a raw RFC 5322 header block into lower-cased name -> value.
+ * Folded lines are unfolded; the first occurrence of a header wins.
+ */
+export function parseHeaderBlock(raw: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const unfolded = raw.replace(/\r?\n[ \t]+/g, ' ');
+  for (const line of unfolded.split(/\r?\n/)) {
+    const colon = line.indexOf(':');
+    if (colon <= 0) continue;
+    const name = line.slice(0, colon).trim().toLowerCase();
+    if (!(name in headers)) headers[name] = line.slice(colon + 1).trim();
+  }
+  return headers;
 }

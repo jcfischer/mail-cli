@@ -90,6 +90,29 @@ email send -t user@example.com -s "Subject" -b "Body" -a work
 email send -t user1@example.com,user2@example.com --cc boss@example.com -s "Update" -b "Content"
 ```
 
+### Drafts
+
+```bash
+# Save a draft to the account's Drafts mailbox (never sent)
+./email draft create -t "user@example.com" -s "Subject" -b "Body"
+
+# Save at most one draft per request ID, for callers that may retry
+./email draft create -t "user@example.com" -s "Subject" -b "Body" \
+  -a work --request-id req-42 -o json
+# {"status":"created","id":"<message-id>","account":"work"}
+# A repeat with the same content answers "exists"; other content answers
+# "conflict". Neither saves a second draft.
+
+# Find a draft by request ID (every IMAP account, or one with -a)
+./email draft lookup req-42 -o json
+# {"status":"found","id":"<message-id>","account":"work"}
+# {"status":"not_found"}   the draft is not in Drafts (sent or removed)
+# {"status":"unavailable"} an account could not be reached
+```
+
+The request ID is stored on the draft as the `X-Mail-Request-Id` header, with a
+content digest in `X-Mail-Request-Digest`. Lookup uses IMAP `SEARCH HEADER`.
+
 ### Syncing Emails
 
 ```bash

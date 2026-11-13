@@ -45,7 +45,8 @@ function looksLikeMarkdown(text: string): boolean {
  */
 export async function buildMessage(
   options: CreateDraftOptions,
-  account: EmailAccount
+  account: EmailAccount,
+  headers?: Record<string, string>
 ): Promise<BuildMessageResult> {
   const { to, cc, bcc, subject, body, html, markdown, inReplyTo, references, attachments, cidAttachments } = options;
 
@@ -58,6 +59,10 @@ export async function buildMessage(
     to: to.join(', '),
     subject,
   };
+
+  if (headers && Object.keys(headers).length > 0) {
+    mailOptions.headers = headers;
+  }
 
   // Add CC/BCC if provided
   if (cc && cc.length > 0) {
@@ -149,7 +154,8 @@ export async function buildMessage(
  */
 export async function createDraft(
   options: CreateDraftOptions,
-  account: EmailAccount
+  account: EmailAccount,
+  headers?: Record<string, string>
 ): Promise<DraftResult> {
   const config = createImapConfig(account);
   const client = new ImapClient(config);
@@ -161,7 +167,7 @@ export async function createDraft(
     const draftsMailbox = await client.findDraftsMailbox();
 
     // Build the message
-    const { message, messageId } = await buildMessage(options, account);
+    const { message, messageId } = await buildMessage(options, account, headers);
 
     // Append to Drafts with \Draft and \Seen flags
     const uid = await client.appendMessage(draftsMailbox, message, ['\\Draft', '\\Seen']);

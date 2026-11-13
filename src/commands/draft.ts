@@ -7,10 +7,10 @@
 
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
 import { loadConfig, getAccount } from '../config';
 import { createDraft } from '../draft/service';
+import { ImapDraftsStore } from '../draft/imap-store';
+import { lookupDraft, saveDraftOnce, validateRequestId, type DraftsStore } from '../draft/request';
 import type { CreateDraftOptions, EmailAttachment } from '../types';
 
 import { createLogger } from '../logger';
@@ -38,6 +38,7 @@ export function createDraftCommand(): Command {
     .option('--no-markdown', 'Disable markdown rendering (send as plain text)')
     .option('-o, --output <format>', 'Output format: text (default) or json', 'text')
     .option('--in-reply-to <messageId>', 'Message-ID to reply to (for threading)')
+    .option('--request-id <id>', 'Save at most one draft per request ID (stamped as a header)')
     .option('-v, --verbose', 'Verbose output')
     .action(async (options) => {
       try {
@@ -91,6 +92,22 @@ export function createDraftCommand(): Command {
           inReplyTo: options.inReplyTo,
         };
 
+        if (options.requestId !== undefined) {
+          const invalid = validateRequestId(options.requestId);
+          if (invalid) throw new Error(invalid);
+          logger.info('Saving draft by request ID', { account: account.name, requestId: options.requestId });
+          const outcome = await saveDraftOnce(new ImapDraftsStore(account), options.requestId, draftOptions);
+          logger.info('Draft request answered', outcome);
+          if (options.output === 'json') {
+            console.log(JSON.stringify(outcome));
+          } else {
+            console.log(`Draft ${outcome.status}`);
+            console.log(`   Account: ${outcome.account}`);
+            console.log(`   Message-ID: ${outcome.id}`);
+          }
+          return;
+        }
+
         // Create the draft
         logger.info('Creating draft', { account: account.name, to, subject: options.subject });
         const result = await createDraft(draftOptions, account);
@@ -132,5 +149,54 @@ export function createDraftCommand(): Command {
       }
     });
 
+  // draft lookup
+  draft
+    .command('lookup <requestId>')
+    .description('Find a draft saved with --request-id: found, not_found or unavailable')
+    .option('-a, --account <name>', 'Only look in this account (default: every IMAP account)')
+    .option('-o, --output <format>', 'Output format: text (default) or json', 'text')
+    .action(async (requestId: string, options) => {
+      try {
+        const invalid = validateRequestId(requestId);
+        if (invalid) throw new Error(invalid);
+        const config = loadConfig();
+        const names = options.account
+          ? [options.account]
+          : Object.keys(config.accounts).filter((name) => config.accounts[name]?.imap?.enabled);
+        const stores = names.map((name) => storeFor(config, name));
+        const result = await lookupDraft(stores, requestId);
+        logger.info('Draft lookup answered', { requestId, ...result });
+        if (options.output === 'json') {
+          console.log(JSON.stringify(result));
+        } else if (result.status === 'found') {
+          console.log(`Draft found in ${result.account}: ${result.id}`);
+        } else {
+          console.log(result.status === 'not_found' ? 'Draft not found' : 'Drafts unavailable');
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error('Draft lookup error', { error: errorMsg });
+        if (options.output === 'json') {
+          console.log(JSON.stringify({ success: false, error: errorMsg }));
+        } else {
+          console.error(`❌ Error: ${errorMsg}`);
+        }
+        process.exit(1);
+      }
+    });
+
   return draft;
+}
+
+/** An account's Drafts store; an account that cannot be resolved answers as unreachable. */
+function storeFor(config: ReturnType<typeof loadConfig>, name: string): DraftsStore {
+  try {
+    return new ImapDraftsStore(getAccount(config, name));
+  } catch (error) {
+    return {
+      account: name,
+      findByRequestId: () => Promise.reject(error),
+      save: () => Promise.reject(error),
+    };
+  }
 }
